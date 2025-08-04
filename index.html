@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classifique os Componentes! (3 Fases)</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better visual appeal and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 16px; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+        .item-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            user-select: none; /* Prevent text selection on drag */
+            border: 2px solid transparent; /* Default border */
+        }
+        .item-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        .item-card.selected {
+            border-color: #3b82f6; /* Blue border for selected item */
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5); /* Blue glow */
+            background-color: #e0f2fe; /* Lighter blue background */
+        }
+        .item-card.correct {
+            border-color: #22c55e; /* Green border for correct */
+            background-color: #f0fdf4; /* Light green background */
+        }
+        .item-card.incorrect {
+            border-color: #ef4444; /* Red border for incorrect */
+            background-color: #fef2f2; /* Light red background */
+        }
+        .category-box {
+            min-height: 150px; /* Ensure categories have enough height */
+            transition: background-color 0.2s ease;
+        }
+        .category-box.highlight {
+            background-color: #e0f2fe; /* Light blue when an item is selected */
+            border: 2px dashed #3b82f6;
+        }
+        .message-box {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 10;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .message-box.correct-msg {
+            background-color: #d1fae5; /* Light green */
+            color: #065f46; /* Dark green */
+        }
+        .message-box.incorrect-msg {
+            background-color: #fee2e2; /* Light red */
+            color: #991b1b; /* Dark red */
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+                gap: 15px;
+            }
+            .grid-cols-3 {
+                grid-template-columns: 1fr; /* Stack categories on small screens */
+            }
+            .items-pool {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Adjust item grid */
+            }
+            .category-box {
+                min-height: 120px;
+            }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .items-pool {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="game-container">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-4">Classifique os Componentes!</h1>
+        <p class="text-lg text-center text-gray-600 mb-6" id="game-intro-text">
+            Arraste ou clique nos itens e depois na categoria correta para classificá-los.
+            <br><strong>Hardware</strong>, <strong>Software</strong> ou <strong>Outros</strong>?
+        </p>
+
+        <div id="score-display" class="text-2xl font-bold text-center text-blue-700 mb-2">Pontuação: 0</div>
+        <div id="phase-display" class="text-xl font-semibold text-center text-gray-600 mb-6"></div>
+
+        <div id="message-box" class="message-box"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="category-boxes-container">
+            <!-- Hardware Category -->
+            <div id="category-Hardware" class="category-box bg-blue-100 p-6 rounded-xl shadow-inner flex flex-col items-center justify-start border-2 border-dashed border-blue-300">
+                <h2 class="text-2xl font-semibold text-blue-800 mb-4">Hardware</h2>
+                <div class="flex flex-wrap gap-3 justify-center items-start w-full" id="items-in-Hardware"></div>
+            </div>
+
+            <!-- Software Category -->
+            <div id="category-Software" class="category-box bg-green-100 p-6 rounded-xl shadow-inner flex flex-col items-center justify-start border-2 border-dashed border-green-300">
+                <h2 class="text-2xl font-semibold text-green-800 mb-4">Software</h2>
+                <div class="flex flex-wrap gap-3 justify-center items-start w-full" id="items-in-Software"></div>
+            </div>
+
+            <!-- Outros Category (reusing 'Tecnologia e Sociedade' ID, but changing content) -->
+            <div id="category-Tecnologia e Sociedade" class="category-box bg-purple-100 p-6 rounded-xl shadow-inner flex flex-col items-center justify-start border-2 border-dashed border-purple-300">
+                <h2 class="text-2xl font-semibold text-purple-800 mb-4 text-center">Tecnologia e Sociedade</h2>
+                <div class="flex flex-wrap gap-3 justify-center items-start w-full" id="items-in-Tecnologia e Sociedade"></div>
+            </div>
+        </div>
+
+        <div id="phase3-challenge-display" class="text-2xl font-semibold text-gray-700 mb-4 text-center hidden"></div>
+        <h2 id="items-pool-title" class="text-2xl font-semibold text-gray-700 mb-4 text-center">Itens para Classificar:</h2>
+        <div id="items-pool" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Game items will be dynamically inserted here -->
+        </div>
+
+        <button id="start-reset-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition duration-300 ease-in-out transform hover:scale-105 mx-auto block">
+            Iniciar Jogo
+        </button>
+    </div>
+
+    <script>
+        // Array of game items organized by phases
+        const gamePhases = {
+            1: [ // Phase 1: Emoji and Name
+                { id: 'cpu', name: 'Processador (CPU)', type: 'Hardware', description: 'O cérebro do computador, executa instruções.', emoji: '🧠' },
+                { id: 'ram', name: 'Memória RAM', type: 'Hardware', description: 'Armazenamento temporário para dados em uso.', emoji: '💾' },
+                { id: 'ssd', name: 'Armazenamento SSD', type: 'Hardware', description: 'Armazena dados permanentemente e rapidamente.', emoji: '⚡' },
+                { id: 'monitor', name: 'Monitor', type: 'Hardware', description: 'Exibe as informações visuais.', emoji: '🖥️' },
+                { id: 'keyboard', name: 'Teclado', type: 'Hardware', description: 'Permite a entrada de texto e comandos.', emoji: '⌨️' },
+                { id: 'os', name: 'Sistema Operacional', type: 'Software', description: 'Gerencia o hardware e software do computador.', emoji: '⚙️' },
+                { id: 'browser', name: 'Navegador Web', type: 'Software', description: 'Permite acessar a internet.', emoji: '🌐' },
+                { id: 'word', name: 'Editor de Texto', type: 'Software', description: 'Usado para criar e editar documentos.', emoji: '📄' },
+                { id: 'social_media', name: 'Redes Sociais', type: 'Tecnologia e Sociedade', description: 'Plataformas para interação social online.', emoji: '📱' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'cloud', name: 'Computação em Nuvem', type: 'Tecnologia e Sociedade', description: 'Serviços de computação entregues pela internet.', emoji: '☁️' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'vr', name: 'Realidade Virtual', type: 'Tecnologia e Sociedade', description: 'Experiências imersivas em ambientes simulados.', emoji: '👓' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'smartwatch', name: 'Smartwatch', type: 'Tecnologia e Sociedade', description: 'Relógio inteligente.', emoji: '⌚' } // New 'Outros' item
+            ],
+            2: [ // Phase 2: Only Names
+                { id: 'motherboard', name: 'Placa-Mãe', type: 'Hardware', description: 'Conecta todos os componentes do computador.' },
+                { id: 'gpu', name: 'Placa de Vídeo (GPU)', type: 'Hardware', description: 'Processa e renderiza imagens para o monitor.' },
+                { id: 'power_supply', name: 'Fonte de Alimentação', type: 'Hardware', description: 'Fornece energia para os componentes.' },
+                { id: 'mouse', name: 'Mouse', type: 'Hardware', description: 'Dispositivo de entrada para interação gráfica.' },
+                { id: 'printer', name: 'Impressora', type: 'Hardware', description: 'Produz cópias físicas de documentos.' },
+                { id: 'antivirus', name: 'Software Antivírus', type: 'Software', description: 'Protege o computador contra ameaças.' },
+                { id: 'spreadsheet', name: 'Planilha Eletrônica', type: 'Software', description: 'Usada para organizar e analisar dados.' },
+                { id: 'presentation', name: 'Software de Apresentação', type: 'Software', description: 'Cria slides para apresentações.' },
+                { id: 'photo_editor', name: 'Editor de Imagens', type: 'Software', description: 'Edita e manipula fotografias digitais.' },
+                { id: 'internet_concept', name: 'Internet (Conceito)', type: 'Tecnologia e Sociedade', description: 'A rede global de computadores.' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'ai_concept', name: 'Inteligência Artificial (Conceito)', type: 'Tecnologia e Sociedade', description: 'Máquinas que simulam inteligência humana.' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'smartphone_concept', name: 'Smartphone (Conceito)', type: 'Tecnologia e Sociedade', description: 'Computador de bolso com diversas funções.' }, // Using 'Tecnologia e Sociedade' as internal type for 'Outros'
+                { id: 'robotics', name: 'Robótica', type: 'Tecnologia e Sociedade', description: 'Campo da engenharia que lida com robôs.' }, // New 'Outros' item
+                { id: 'blockchain', name: 'Blockchain', type: 'Tecnologia e Sociedade', description: 'Tecnologia de registro distribuído.' } // New 'Outros' item
+            ],
+            3: [ // Phase 3: Problem/Scenario
+                {
+                    problemId: 'problem_slow_computer',
+                    name: 'Seu computador está muito lento para iniciar programas e carregar arquivos. Qual é a melhor forma de resolver isso?',
+                    solutions: [
+                        { id: 'sol_ssd', name: 'Instalar um SSD', type: 'Hardware', description: 'Melhora drasticamente a velocidade de leitura/escrita.' },
+                        { id: 'sol_ram', name: 'Adicionar mais RAM', type: 'Hardware', description: 'Aumenta a capacidade de processamento temporário.' },
+                        { id: 'sol_cleanup', name: 'Limpar arquivos temporários e desinstalar programas desnecessários', type: 'Software', description: 'Libera recursos do sistema.' }
+                    ]
+                },
+                {
+                    problemId: 'problem_virus_infection',
+                    name: 'Você suspeita que seu computador foi infectado por um vírus, com pop-ups e lentidão. O que você deve fazer?',
+                    solutions: [
+                        { id: 'sol_antivirus', name: 'Instalar e rodar um Software Antivírus', type: 'Software', description: 'Detecta e remove malwares.' },
+                        { id: 'sol_reformat', name: 'Formatar o disco rígido e reinstalar o Sistema Operacional', type: 'Hardware', description: 'Solução drástica para infecções graves.' },
+                        { id: 'sol_backup', name: 'Fazer backup de arquivos importantes', type: 'Software', description: 'Protege seus dados antes de qualquer ação.' }
+                    ]
+                },
+                {
+                    problemId: 'problem_gaming_performance',
+                    name: 'Você quer jogar os jogos mais recentes com gráficos incríveis, mas seu computador atual não aguenta. O que é crucial para melhorar isso?',
+                    solutions: [
+                        { id: 'sol_gpu_upgrade', name: 'Atualizar a Placa de Vídeo (GPU)', type: 'Hardware', description: 'Essencial para renderização de gráficos de alta qualidade.' },
+                        { id: 'sol_cpu_upgrade', name: 'Atualizar o Processador (CPU)', type: 'Hardware', description: 'Melhora o desempenho geral do jogo.' },
+                        { id: 'sol_game_settings', name: 'Ajustar as configurações gráficas do jogo para menor qualidade', type: 'Software', description: 'Compromisso para rodar jogos em hardware mais fraco.' }
+                    ]
+                },
+                {
+                    problemId: 'problem_remote_collaboration',
+                    name: 'Sua equipe precisa colaborar em um projeto, compartilhando documentos e se comunicando em tempo real, mesmo à distância. Que tipo de software ou serviço é ideal?',
+                    solutions: [
+                        { id: 'sol_cloud_collab', name: 'Usar uma plataforma de colaboração em nuvem (ex: Google Docs, Microsoft 365)', type: 'Software', description: 'Permite edição simultânea e comunicação integrada.' },
+                        { id: 'sol_video_conf', name: 'Utilizar software de videoconferência', type: 'Software', description: 'Para reuniões e comunicação face a face virtual.' },
+                        { id: 'sol_shared_drive', name: 'Configurar um disco de rede compartilhado', type: 'Hardware', description: 'Armazenamento centralizado de arquivos.' }
+                    ]
+                }
+            ]
+        };
+
+        // DOM elements
+        const scoreDisplay = document.getElementById('score-display');
+        const phaseDisplay = document.getElementById('phase-display');
+        const itemsPool = document.getElementById('items-pool');
+        const categories = {
+            'Hardware': document.getElementById('category-Hardware').querySelector('div'),
+            'Software': document.getElementById('category-Software').querySelector('div'),
+            'Tecnologia e Sociedade': document.getElementById('category-Tecnologia e Sociedade').querySelector('div') // This div will be used for 'Outros'
+        };
+        const categoryBoxes = {
+            'Hardware': document.getElementById('category-Hardware'),
+            'Software': document.getElementById('category-Software'),
+            'Tecnologia e Sociedade': document.getElementById('category-Tecnologia e Sociedade') // This box will be used for 'Outros'
+        };
+        const categoryTecSocH2 = document.getElementById('category-Tecnologia e Sociedade').querySelector('h2'); // Reference to the H2 for dynamic text
+        const startResetButton = document.getElementById('start-reset-button');
+        const messageBox = document.getElementById('message-box');
+        const phase3ChallengeDisplay = document.getElementById('phase3-challenge-display');
+        const itemsPoolTitle = document.getElementById('items-pool-title');
+        const gameIntroText = document.getElementById('game-intro-text');
+        const categoryBoxesContainer = document.getElementById('category-boxes-container');
+
+        // Game state variables
+        let score = 0;
+        let selectedItem = null;
+        let itemsRemaining = [];
+        let currentPhase = 0;
+        let currentProblemIndex = 0; // For Phase 3 problems
+
+        /**
+         * Shuffles an array in place using the Fisher-Yates (Knuth) algorithm.
+         * @param {Array} array - The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+
+        /**
+         * Initializes or resets the game state for the current phase.
+         */
+        function initGame() {
+            if (currentPhase === 0) { // First time starting the game or restarting from end
+                score = 0;
+                updateScoreDisplay();
+                currentProblemIndex = 0; // Reset problem index for new game
+            }
+
+            currentPhase++;
+            if (!gamePhases[currentPhase]) { // No more phases, game finished
+                endGame();
+                return;
+            }
+
+            selectedItem = null;
+            displayMessage('', false); // Clear any previous messages
+
+            // Clear all category display areas
+            for (const categoryKey in categories) {
+                categories[categoryKey].innerHTML = '';
+            }
+            itemsPool.innerHTML = ''; // Clear items pool
+
+            // Reset category box highlights
+            for (const categoryKey in categoryBoxes) {
+                categoryBoxes[categoryKey].classList.remove('highlight');
+            }
+
+            // UI adjustments based on phase
+            if (currentPhase === 3) {
+                gameIntroText.classList.add('hidden'); // Hide general intro text
+                categoryBoxesContainer.classList.remove('grid-cols-3'); // Remove 3-column layout
+                categoryBoxesContainer.classList.add('grid-cols-2'); // Set to 2-column for Hardware/Software
+                categoryBoxes['Tecnologia e Sociedade'].classList.add('hidden'); // Hide this category box
+                itemsPoolTitle.classList.add('hidden'); // Hide "Itens para Classificar" title
+                phase3ChallengeDisplay.classList.remove('hidden'); // Show challenge display
+                loadPhase3Problem();
+            } else {
+                gameIntroText.classList.remove('hidden'); // Show general intro text
+                categoryBoxesContainer.classList.remove('grid-cols-2'); // Reset to 3-column layout
+                categoryBoxesContainer.classList.add('grid-cols-3');
+                categoryBoxes['Tecnologia e Sociedade'].classList.remove('hidden'); // Show this category box
+                categoryTecSocH2.textContent = 'Outros'; // Change text to "Outros" for phases 1 and 2
+                itemsPoolTitle.classList.remove('hidden'); // Show "Itens para Classificar" title
+                phase3ChallengeDisplay.classList.add('hidden'); // Hide challenge display
+
+                // Set current items based on the phase
+                itemsRemaining = [...gamePhases[currentPhase]];
+                shuffleArray(itemsRemaining);
+                populateItemsPool(itemsRemaining);
+            }
+
+            // Update phase display
+            phaseDisplay.textContent = `Fase ${currentPhase} de ${Object.keys(gamePhases).length}`;
+
+            startResetButton.textContent = 'Próxima Fase';
+            startResetButton.disabled = true; // Disable until phase is complete
+        }
+
+        /**
+         * Loads the current problem for Phase 3 and populates the items pool with its solutions.
+         */
+        function loadPhase3Problem() {
+            if (currentProblemIndex >= gamePhases[3].length) {
+                // All problems in Phase 3 are done
+                startResetButton.textContent = 'Próxima Fase';
+                startResetButton.disabled = false;
+                return;
+            }
+
+            const currentProblem = gamePhases[3][currentProblemIndex];
+            phase3ChallengeDisplay.textContent = currentProblem.name; // Display the problem statement
+
+            // Clear previous items in categories for Phase 3
+            categories['Hardware'].innerHTML = '';
+            categories['Software'].innerHTML = '';
+
+            itemsRemaining = [...currentProblem.solutions]; // Solutions are the items to classify
+            shuffleArray(itemsRemaining);
+            populateItemsPool(itemsRemaining);
+        }
+
+        /**
+         * Populates the items pool with the given array of items.
+         * @param {Array} itemsToPopulate - The array of items (or solutions for Phase 3) to display.
+         */
+        function populateItemsPool(itemsToPopulate) {
+            itemsPool.innerHTML = ''; // Clear existing items
+
+            itemsToPopulate.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.id = `item-${item.id}`;
+                itemCard.dataset.id = item.id;
+                itemCard.dataset.type = item.type; // Store the correct type
+                itemCard.className = `item-card bg-white p-4 rounded-xl shadow-md text-center text-gray-800 font-medium text-sm md:text-base flex items-center justify-center h-24 w-full border-2 border-transparent`;
+                itemCard.title = item.description; // Tooltip for description
+
+                if (currentPhase === 1 && item.emoji) {
+                    // Phase 1: Emoji and Name
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.textContent = item.emoji;
+                    emojiSpan.className = 'text-4xl mb-2'; // Larger emoji
+                    itemCard.appendChild(emojiSpan);
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = item.name;
+                    itemCard.appendChild(textSpan);
+                    itemCard.classList.add('flex-col'); // Stack emoji and text
+                    itemCard.style.height = 'auto'; // Adjust height for emoji + text
+                    itemCard.style.padding = '10px'; // Adjust padding
+                } else if (currentPhase === 2) {
+                    // Phase 2: Only Names
+                    itemCard.textContent = item.name;
+                } else if (currentPhase === 3) {
+                    // Phase 3: Problem/Scenario (solutions are displayed as items)
+                    itemCard.textContent = item.name; // Solution name is the text
+                    itemCard.classList.add('text-left', 'text-base'); // Adjust text alignment and size
+                    itemCard.style.height = 'auto'; // Adjust height for longer text
+                    itemCard.style.padding = '15px'; // Adjust padding
+                }
+
+                itemCard.addEventListener('click', handleItemClick);
+                itemsPool.appendChild(itemCard);
+            });
+        }
+
+        /**
+         * Handles the click event on an item card.
+         * Highlights the selected item and removes highlight from previously selected one.
+         * @param {Event} event - The click event.
+         */
+        function handleItemClick(event) {
+            // If an item is already selected, remove its highlight
+            if (selectedItem) {
+                selectedItem.classList.remove('selected');
+            }
+
+            // Set the new selected item and add highlight
+            selectedItem = event.target;
+            selectedItem.classList.add('selected');
+
+            // Add highlight to all category boxes to indicate they are clickable
+            for (const categoryKey in categoryBoxes) {
+                // Only highlight if the category is visible/active for the current phase
+                if (currentPhase === 3 && categoryKey === 'Tecnologia e Sociedade') {
+                    continue; // Do not highlight hidden category
+                }
+                categoryBoxes[categoryKey].classList.add('highlight');
+            }
+        }
+
+        /**
+         * Handles the click event on a category box.
+         * Checks if the selected item matches the category and updates score/feedback.
+         * @param {Event} event - The click event.
+         */
+        function handleCategoryClick(event) {
+            if (!selectedItem) {
+                displayMessage('Por favor, selecione um item primeiro!', false);
+                return;
+            }
+
+            let targetCategoryBox = event.target;
+            while (targetCategoryBox && !targetCategoryBox.classList.contains('category-box')) {
+                targetCategoryBox = targetCategoryBox.parentNode;
+            }
+
+            if (!targetCategoryBox) {
+                return;
+            }
+
+            const categoryType = targetCategoryBox.id.replace('category-', '');
+
+            // For Phase 3, prevent classification into "Tecnologia e Sociedade"
+            if (currentPhase === 3 && categoryType === 'Tecnologia e Sociedade') {
+                displayMessage('Nesta fase, classifique apenas como Hardware ou Software!', false);
+                return;
+            }
+
+            const itemType = selectedItem.dataset.type;
+            const itemId = selectedItem.dataset.id;
+            const itemName = selectedItem.textContent; // Get the displayed text for feedback
+
+            let isCorrect = false;
+            if (itemType === categoryType) {
+                score += 10;
+                isCorrect = true;
+                displayMessage('Correto! +10 pontos!', true);
+                selectedItem.classList.add('correct');
+            } else {
+                score -= 5;
+                // Find the original item from the current phase to get its correct type for the message
+                // For Phase 3, find from the current problem's solutions
+                const sourceArray = currentPhase === 3 ? gamePhases[3][currentProblemIndex].solutions : gamePhases[currentPhase];
+                const originalItem = sourceArray.find(item => item.id === itemId);
+                displayMessage(`Errado! "${itemName}" pertence à categoria "${originalItem.type}". -5 pontos!`, false);
+                selectedItem.classList.add('incorrect');
+            }
+
+            updateScoreDisplay();
+
+            // Move the item from the pool to the correct category display
+            itemsPool.removeChild(selectedItem);
+            const movedItem = selectedItem.cloneNode(true);
+            movedItem.classList.remove('selected');
+            movedItem.removeEventListener('click', handleItemClick);
+            movedItem.style.cursor = 'default';
+
+            categories[categoryType].appendChild(movedItem);
+
+            itemsRemaining = itemsRemaining.filter(item => item.id !== itemId);
+
+            selectedItem = null;
+            for (const key in categoryBoxes) {
+                categoryBoxes[key].classList.remove('highlight');
+            }
+
+            // Check if all items in the current phase/problem have been sorted
+            if (itemsPool.children.length === 0) {
+                if (currentPhase === 3) {
+                    // Add 5-second delay before loading next problem or ending game
+                    setTimeout(() => {
+                        currentProblemIndex++; // Move to next problem in Phase 3
+                        if (currentProblemIndex < gamePhases[3].length) {
+                            loadPhase3Problem();
+                        } else {
+                            // All problems in Phase 3 completed
+                            startResetButton.textContent = 'Próxima Fase';
+                            startResetButton.disabled = false;
+                        }
+                    }, 5000); // 5 seconds delay
+                } else if (currentPhase < Object.keys(gamePhases).length) {
+                    // For phases 1 and 2, just enable the button
+                    startResetButton.textContent = 'Próxima Fase';
+                    startResetButton.disabled = false;
+                } else {
+                    // End game if all phases are done
+                    endGame();
+                }
+            }
+        }
+
+        /**
+         * Updates the score display on the screen.
+         */
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Pontuação: ${score}`;
+        }
+
+        /**
+         * Displays a temporary message to the user.
+         * @param {string} message - The message to display.
+         * @param {boolean} isCorrect - True if the message indicates a correct action, false otherwise.
+         */
+        function displayMessage(message, isCorrect) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('correct-msg', 'incorrect-msg', 'show');
+            if (message) {
+                messageBox.classList.add(isCorrect ? 'correct-msg' : 'incorrect-msg');
+                messageBox.classList.add('show');
+                // The setTimeout for hiding the message is handled by the phase progression logic
+                // in handleCategoryClick for Phase 3. For other phases, it's still 2 seconds.
+                if (currentPhase !== 3) {
+                    setTimeout(() => {
+                        messageBox.classList.remove('show');
+                    }, 2000); // Message disappears after 2 seconds for phases 1 and 2
+                }
+            }
+        }
+
+        /**
+         * Ends the game, displays final score, and prompts to play again.
+         */
+        function endGame() {
+            phaseDisplay.textContent = `Jogo Concluído!`;
+            displayMessage(`Parabéns! Você completou todas as fases! Sua pontuação final é: ${score} pontos!`, true);
+            startResetButton.textContent = 'Jogar Novamente';
+            startResetButton.disabled = false; // Enable button to play again
+            currentPhase = 0; // Reset phase for next game
+            currentProblemIndex = 0; // Reset problem index
+        }
+
+        // Event listener for the Start/Reset button
+        startResetButton.addEventListener('click', initGame);
+
+        // Add click listeners to category boxes
+        for (const categoryKey in categoryBoxes) {
+            categoryBoxes[categoryKey].addEventListener('click', handleCategoryClick);
+        }
+
+        // Initialize the game when the page loads (sets up the "Iniciar Jogo" button)
+        window.onload = () => {
+            currentPhase = 0; // Ensure it's reset to 0
+            score = 0; // Ensure score is reset
+            currentProblemIndex = 0; // Ensure problem index is reset
+            updateScoreDisplay();
+            phaseDisplay.textContent = 'Pressione "Iniciar Jogo" para começar!'; // Initial message
+            startResetButton.textContent = 'Iniciar Jogo';
+            startResetButton.disabled = false; // Ensure button is enabled
+
+            // Reset UI to initial state
+            gameIntroText.classList.remove('hidden');
+            categoryBoxesContainer.classList.remove('grid-cols-2');
+            categoryBoxesContainer.classList.add('grid-cols-3');
+            categoryBoxes['Tecnologia e Sociedade'].classList.remove('hidden');
+            categoryTecSocH2.textContent = 'Tecnologia e Sociedade'; // Reset to original for initial display
+            itemsPoolTitle.classList.remove('hidden');
+            phase3ChallengeDisplay.classList.add('hidden');
+
+            // Clear all category display areas
+            for (const categoryKey in categories) {
+                categories[categoryKey].innerHTML = '';
+            }
+            itemsPool.innerHTML = ''; // Clear items pool
+        };
+    </script>
+</body>
+</html>
